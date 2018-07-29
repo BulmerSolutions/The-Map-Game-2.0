@@ -31,23 +31,37 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="app.js" />
+    <Compile Include="modules\database.js" />
+    <Compile Include="modules\store.js" />
+    <Compile Include="public\js\draggable.js" />
+    <Compile Include="public\js\engine.js" />
     <Compile Include="routes\index.js" />
     <Compile Include="routes\game.js" />
+    <Content Include="config.json" />
     <Content Include="package.json" />
-    <Content Include="public\stylesheets\main.css" />
+    <Content Include="public\css\game.css" />
+    <Content Include="public\css\main.css" />
+    <Content Include="public\maps\tamriel.json" />
+    <Content Include="public\maps\tamriel.png" />
+    <Content Include="public\maps\usa.png" />
+    <Content Include="public\maps\usa_regions.png" />
     <Content Include="README.md" />
-    <Content Include="views\gameLogin.pug" />
+    <Content Include="views\game\game.pug" />
+    <Content Include="views\game\join.pug" />
     <Content Include="views\index.pug" />
     <Content Include="views\layout.pug" />
     <Content Include="views\error.pug" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="modules\" />
     <Folder Include="public\" />
     <Folder Include="public\images\" />
-    <Folder Include="public\javascripts\" />
-    <Folder Include="public\stylesheets\" />
+    <Folder Include="public\js\" />
+    <Folder Include="public\css\" />
+    <Folder Include="public\maps\" />
     <Folder Include="routes\" />
     <Folder Include="views\" />
+    <Folder Include="views\game\" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />

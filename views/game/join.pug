@@ -1,0 +1,12 @@
+extends ../layout
+
+block content
+  h1 The Map Game
+  p Log into your game!
+  
+  form(action="" method="POST")
+      input(name="pin" placeholder="Game Pin")
+      br
+      input(name="password" type="password" placeholder="Password")
+      br
+      button(type="submit") Join game!

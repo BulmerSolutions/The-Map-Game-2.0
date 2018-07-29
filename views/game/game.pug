@@ -1,0 +1,67 @@
+doctype html
+html
+  head
+    title The Map Game
+    link(rel='stylesheet', href='/css/game.css')
+    link(href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet")
+  body
+    canvas#whiteboard
+    canvas#map
+    side
+        content#info
+            span#info_title Nothing Selected
+            table
+                tr.info_data
+                    td Owner:
+                    td#info_owner No One
+                tr.info_data
+                    td Population:
+                    td#info_population 0
+                tr.info_data
+                    td Military:
+                    td#info_military 0
+                tr.info_data
+                    td Food Production:
+                    td#info_food 0
+        content#edit
+            span Whiteboard
+            item(title="Draw" onclick="game.whiteboard.toggleTool('pen')")#pen-wb
+                i.material-icons create
+            item(title="Text" onclick="game.whiteboard.toggleTool('text')")#text-wb
+                i.material-icons title
+            item(title="Fill" onclick="game.whiteboard.toggleTool('fill')")#fill-wb
+                i.material-icons format_color_fill
+            colors#colors-wb-container.hidden
+                color(style="background-color: #fff; border: 1px solid #cfcfcf;" onclick="game.whiteboard.toggleColor('fff')")#fff-btn
+                color(style="background-color: #000" onclick="game.whiteboard.toggleColor('000')")#000-btn.checked
+                color(style="background-color: #e00" onclick="game.whiteboard.toggleColor('e00')")#e00-btn
+                color(style="background-color: #e80" onclick="game.whiteboard.toggleColor('e80')")#e80-btn
+                color(style="background-color: #ee0" onclick="game.whiteboard.toggleColor('ee0')")#ee0-btn
+                color(style="background-color: #0c0" onclick="game.whiteboard.toggleColor('0c0')")#0c0-btn
+                color(style="background-color: #0ee" onclick="game.whiteboard.toggleColor('0ee')")#0ee-btn
+                color(style="background-color: #00e" onclick="game.whiteboard.toggleColor('00e')")#00e-btn
+                color(style="background-color: #90e" onclick="game.whiteboard.toggleColor('90e')")#90e-btn
+                color(style="background-color: #e0e" onclick="game.whiteboard.toggleColor('e0e')")#e0e-btn
+            span(style="border-bottom: 0;")#textbox-wb-container.hidden
+                input(style="display: block; padding: 6px; margin: 2px auto; width: calc(100% - 32px); font-size: 14px;" placeholder="text here!")#textbox-wb
+            span Map
+            item(title="Move")
+                i.material-icons pan_tool
+            hr
+        nav
+            item(title="Map Info" onclick="game.side.toggle('info')")#info-btn
+                i.material-icons info
+            item(title="Edit Tools" onclick="game.side.toggle('edit')")#edit-btn
+                i.material-icons edit
+            item(title="Chat")#chat-btn
+                i.material-icons chat_bubble_outline
+            item(title="Turn")#turn-btn
+                i.material-icons rotate_left
+            item(title="Settings")#settings-btn
+                i.material-icons settings
+            item(title="Players")#players-btn
+                i.material-icons supervisor_account
+            item(title="Exit")#exit-btn
+                i.material-icons exit_to_app
+    script(src="/js/draggable.js")
+    script(src="/js/engine.js")

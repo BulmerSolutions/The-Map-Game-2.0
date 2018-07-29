@@ -6,6 +6,10 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var Database = require('./modules/database');
+
+var Store = require('./modules/store');
+var store = new Store();
 
 var routes = require('./routes/index');
 var game = require('./routes/game');
@@ -16,6 +20,10 @@ var io = require('socket.io')(server);
 
 // Add Socket IO reference
 app.set('socketio', io);
+
+// Add database connection and data store to the app
+app.set('mysql', new Database(store));
+app.set('store', store);
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
