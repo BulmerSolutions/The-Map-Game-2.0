@@ -36,6 +36,29 @@ canvas {
     background-repeat: no-repeat;
 }
 
+body > nav {
+    display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 40px;
+    width: calc(100vw - 300px);
+    z-index: 10;
+    border-top: 1px solid #cfcfcf;
+    background-color: #fff;
+}
+
+    body > nav > tab {
+        display: inline-block;
+        position: relative;
+        height: 28px;
+        padding: 6px 15px;
+        font-size: 18px;
+        line-height: 28px;
+        width: auto;
+        border-right: 1px solid #cfcfcf;
+    }
+
 topbar {
     display: block;
     width: 100vw;

@@ -57,7 +57,7 @@ class Engine {
         img.src = "/maps/" + "tamriel" + ".png";
 
         // Create draggables
-        this.draggables['map'] = new Draggable('map', 10, window.innerHeight - 442, this, true);
+        this.draggables['map'] = new Draggable('map', 10, 10, this, true);
 
         // toggle side
         this.side.toggle('info');
