@@ -7,6 +7,8 @@ class Engine {
     constructor(opts) {
         this.version = '0.1.0';
 
+        this.socket = io('/');
+
         this.player = new Player(opts.player);
         this.whiteboard = new Whiteboard(this, this.player);
         this.map = new GameMap(this, this.player, "tamriel", opts.map.points);
@@ -61,16 +63,35 @@ class Engine {
 
 class Bucket {
 
-    constructor(canvas) {
+    /**
+     * 
+     * @param {any} canvas
+     * @param {Engine} game
+     */
+    constructor(canvas, game) {
+        this.game = game;
         this.RGBA = 4;      // how many indexs per pixel
         this.queue = [];
 
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
+        
+        this.history = [];
 
         this.bitmap = this.ctx.getImageData(0, 0, canvas.width - 1, canvas.height - 1);
 
         this.isRendering = false;
+
+        this.init();
+    }
+
+    init() {
+        document.addEventListener('keyup', (e) => {
+            if (e.keyCode === 90 && e.ctrlKey && !this.isUndoing) {
+                this.isUndoing = true;
+                this.undo(true);
+            }
+        });
     }
 
     /**
@@ -81,8 +102,9 @@ class Bucket {
      * @param {number} color
      * @param {number} tolerance
      */
-    async floodFill(x, y, color, tolerance) {
+    async floodFill(x, y, color, tolerance, emit) {
         if (!this.isRendering) {
+
             this.isRendering = true;
 
             this.reloadBitmap();
@@ -95,6 +117,12 @@ class Bucket {
 
             let targetColor = Array.prototype.slice.call(this.bitmap.data, start, start + this.RGBA);
             let replacementColor = color;
+
+            // Save changes
+            let history = {
+                'prevColor': targetColor,
+                'pixels': []
+            };
             
             queue.push(start);
 
@@ -103,6 +131,7 @@ class Bucket {
 
                 if (this.colorEquals(node, targetColor, tolerance)) {
                     this.setColor(node, replacementColor);
+                    history.pixels.push(node);
 
                     for (let d = 0; d < 8; d++) {
                         queue.push(this.getNode(d, node));
@@ -111,10 +140,45 @@ class Bucket {
             }
 
             this.ctx.putImageData(this.bitmap, 0, 0);
-
+            // save history to stack
+            this.history.push(history);
             this.isRendering = false;
+
+            if (!emit) { return; }
+
+            this.game.socket.emit('fill', {
+                x: x,
+                y: y,
+                color: color,
+                tolerance: tolerance
+            });
             
         }
+    }
+
+    undo(emit) {
+        if (this.isUndoing) {
+            if (this.history.length > 0) {
+                // get last item from histoty
+                let history = this.history.pop();
+
+                // reload bitmap
+                this.reloadBitmap();
+
+                // set pixels to previous colors
+                for (let p = 0; p < history.pixels.length; p++) {
+                    this.setColor(history.pixels[p], history.prevColor);
+                }
+
+                this.ctx.putImageData(this.bitmap, 0, 0);
+            }
+
+            this.isUndoing = false;
+        }
+
+        if (!emit) { return; }
+
+        this.game.socket.emit('undo', {});
     }
 
     reloadBitmap() {
@@ -122,10 +186,18 @@ class Bucket {
     }
 
     colorEquals(node, color, tolerance) {
+        // Out of bounds rule
         if (node < 0 || node + this.RGBA - 1 > this.bitmap.data.length) {
             return false;
         }
 
+        // Colors match
+        if (Math.abs(node[0] - color[0]) <= tolerance &&
+            Math.abs(node[1] - color[1]) <= tolerance &&
+            Math.abs(node[2] - color[2]) <= tolerance &&
+            Math.abs(node[3] - color[3]) <= tolerance ) return false;
+
+        // Colors are within tolerance
         let diff = 0;
         for (var i = 0; i < this.RGBA; i += 1) {
             diff += Math.abs(this.bitmap.data[node + i] - color[i]);
@@ -206,7 +278,7 @@ class Whiteboard {
             "selected": "none"
         }
 
-        this.bucket = new Bucket(this.canvas);
+        this.bucket = new Bucket(this.canvas, this.game);
 
         this.init();
     }
@@ -393,8 +465,9 @@ class GameMap {
             color: "000",
             selected: "info"
         }
-        this.bucket = new Bucket(this.canvas);
+        this.bucket = new Bucket(this.canvas, this.game);
         this.mouseDown = false;
+        this.savedPos = { x: 0, y: 0 };
 
         this.diff;
         this.width;
@@ -442,12 +515,13 @@ class GameMap {
                     break;
                 case 'text':
                     let rect = self.canvas.getBoundingClientRect();
-                    let msg = document.getElementById('textbox-wb').value;
+                    let msg = document.getElementById('textbox-map').value;
                     self.ctx.font = "12px Arial";
                     self.ctx.fillText(msg, pos.x, pos.y);
                     break;
                 case 'fill':
-                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), 10);
+                    let tolerance = document.getElementById('tolerance-map').value;
+                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), tolerance, true);
                     break;
             }
         });
@@ -456,17 +530,16 @@ class GameMap {
                 case 'pen':
                     let pos = self.getPos(e, self.canvas);
                     self.savedPos = { x: pos.x, y: pos.y }
-                    self.drawDot(pos.x, pos.y);
                     self.mouseDown = true;
                     break;
             }
         });
-        this.canvas.addEventListener('mousemove', function (e) {
+        this.canvas.addEventListener('mousemove', throttle(function (e) {
             switch (self.tool.selected) {
                 case 'pen':
                     if (self.mouseDown === true) {
                         let { x, y } = self.getPos(e, self.canvas);
-                        self.drawDot(x, y);
+                        self.drawDot(self.savedPos.x, self.savedPos.y, x, y, self.tool.color, true);
                     }
                     break;
                 case 'info':
@@ -482,7 +555,7 @@ class GameMap {
                     self.canvas.style.cursor = "default";
                     break;
             }
-        });
+        }, 10));
         this.canvas.addEventListener('mouseup', function (e) {
             switch (self.tool.selected) {
                 case 'pen':
@@ -497,22 +570,35 @@ class GameMap {
     }
 
     /**
-     * 
-     * @param {number} x Mouse X position
-     * @param {number} y Mouse Y position
+     *
+     * @param {number} x0 Previous mouse X position
+     * @param {number} y0 Previous mouse Y position
+     * @param {number} x1 Mouse X position
+     * @param {number} y1 Mouse Y position
+     * @param {string} color Draw hex color
      */
-    drawDot(x, y) {
-        this.ctx.strokeStyle = "#" + this.tool.color;
+    drawDot(x0, y0, x1, y1, color, emit) {
+        this.ctx.strokeStyle = "#" + color;
         // Draw filled line
         this.ctx.beginPath();
         this.ctx.lineCap = "round";
         this.ctx.lineJoin = "round";
         this.ctx.lineWidth = 4;
-        this.ctx.moveTo(this.savedPos.x, this.savedPos.y);
-        this.ctx.lineTo(x, y);
+        this.ctx.moveTo(x0, y0);
+        this.ctx.lineTo(x1, y1);
         this.ctx.stroke();
 
-        this.savedPos = { x: x, y: y };
+        this.savedPos = { x: x1, y: y1 };
+
+        if (!emit) return;
+
+        this.game.socket.emit('pen', {
+            x0: x0,
+            y0: y0,
+            x1: x1,
+            y1: y1,
+            color: color
+        })
     }
 
     /**
@@ -1027,4 +1113,32 @@ const game = new Engine({
         'name': '',
         'isHost': false
     }
+});
+
+// limit the number of events per second
+function throttle(callback, delay) {
+    var previousCall = new Date().getTime();
+    return function () {
+        let time = new Date().getTime();
+
+        if ((time - previousCall) >= delay) {
+            previousCall = time;
+            callback.apply(null, arguments);
+        }
+    };
+}
+
+game.socket.on('fill', (data) => {
+    let { x, y, color, tolerance } = data;
+    game.map.bucket.floodFill(x, y, color, tolerance);
+});
+
+game.socket.on('pen', (data) => {
+    let { x0, y0, x1, y1, color } = data;
+    game.map.drawDot(x0, y0, x1, y1, color);
+});
+
+game.socket.on('undo', () => {
+    game.map.bucket.isUndoing = true;
+    game.map.bucket.undo();
 });

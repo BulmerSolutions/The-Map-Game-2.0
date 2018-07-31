@@ -29,10 +29,20 @@ router.get('/:pin', function (req, res) {
             io.removeAllListeners('connection');
         }
 
-        socket.on('draw', data => {
-            console.log('Draw data: ', data);
-            socket.emit('draw', data);
+        socket.on('fill', data => {
+            socket.broadcast.emit('fill', data);
+        });
 
+        socket.on('pen', data => {
+            socket.broadcast.emit('pen', data);
+        });
+
+        socket.on('undo', data => {
+            socket.broadcast.emit('undo', data);
+        });
+
+        socket.on('text', data => {
+            socket.broadcast.emit('text', data);
         });
 
     });

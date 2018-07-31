@@ -35,12 +35,14 @@
     <Compile Include="modules\store.js" />
     <Compile Include="public\js\draggable.js" />
     <Compile Include="public\js\engine.js" />
+    <Compile Include="public\js\socket.io.slim.js" />
     <Compile Include="routes\index.js" />
     <Compile Include="routes\game.js" />
     <Content Include="config.json" />
     <Content Include="package.json" />
     <Content Include="public\css\game.css" />
     <Content Include="public\css\main.css" />
+    <Content Include="public\js\socket.io.slim.js.map" />
     <Content Include="public\maps\tamriel.json" />
     <Content Include="public\maps\tamriel.png" />
     <Content Include="public\maps\usa.png" />

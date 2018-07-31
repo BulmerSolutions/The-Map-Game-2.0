@@ -253,17 +253,17 @@ info {
 
 .tooltip .tooltiptext {
     visibility: hidden;
-    width: 60px;
+    min-width: 60px;
     background-color: #555;
     color: #fff;
     text-align: center;
     border-radius: 6px;
-    padding: 4px 0;
+    padding: 4px 8px;
     position: absolute;
     z-index: 100;
     bottom: 115%;
     font-size: 14px;
-    margin-left: -18px;
+    margin-left: -26px;
     opacity: 0;
     transition: opacity 0.3s;
 }
