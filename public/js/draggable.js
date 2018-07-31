@@ -5,10 +5,10 @@ class Draggable {
      * @param {String} id Element ID
      * @param {Number} x Position X
      * @param {Number} y Position Y
-     * @param {Boolean} manualMove Call move somewhere else
+     * @param {Engine} game Game Object
      */
-    constructor(id, x, y, game, manualMove) {
-        this.manualMove = manualMove || false;
+    constructor(id, x, y, game) {
+        this.game = game;
         this.elem = document.getElementById(id);
         this.elem.style.position = 'fixed';
         this.elem.isSelected = false;
@@ -21,9 +21,7 @@ class Draggable {
 
         // Setup events
         this.elem.addEventListener('mousedown', this.elemSelected.bind(this));
-        if (!game.player.isHost) {
-            this.elem.addEventListener('mousemove', this.move.bind(this));
-        }
+        this.elem.addEventListener('mousemove', this.move.bind(this));
         this.elem.addEventListener('mouseup', this.elemReleased.bind(this));
     }
 
@@ -33,7 +31,7 @@ class Draggable {
      */
     move(e) {
         e.preventDefault();
-        if (this.elem.isSelected) {
+        if (this.elem.isSelected && this.game.map.tool.selected === "move") {
             this.elem.isMoving = true;
             let dx = e.clientX - this.lastMouseX;
             let dy = e.clientY - this.lastMouseY;
@@ -50,19 +48,23 @@ class Draggable {
      * @description Mouse down event
      * @param {MouseEvent} e Mouse event
      */
-    elemSelected (e) {
-        this.elem.isSelected = true;
-        this.lastMouseX = e.clientX;
-        this.lastMouseY = e.clientY;
+    elemSelected(e) {
+        if (this.game.map.tool.selected === "move") {
+            this.elem.isSelected = true;
+            this.lastMouseX = e.clientX;
+            this.lastMouseY = e.clientY;
+        }
     }
 
     /**
      * @description Mouse up event
      * @param {MouseEvent} e Mouse event
      */
-    elemReleased (e) {
-        e.preventDefault();
-        this.elem.isSelected = false;
-        this.elem.isMoving = false;
+    elemReleased(e) {
+        if (this.game.map.tool.selected === "move") {
+            e.preventDefault();
+            this.elem.isSelected = false;
+            this.elem.isMoving = false;
+        }
     }
 }

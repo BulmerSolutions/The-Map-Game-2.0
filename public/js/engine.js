@@ -9,9 +9,7 @@ class Engine {
 
         this.player = new Player(opts.player);
         this.whiteboard = new Whiteboard(this, this.player);
-        this.map = new GameMap(this, opts.map.points);
-
-        this.draggables = {};
+        this.map = new GameMap(this, this.player, "tamriel", opts.map.points);
 
         // create engine variables
         this.side = {
@@ -43,50 +41,8 @@ class Engine {
         // to get the `this` object functions
         let self = this;
 
-        // Add image to map
-        let img = new Image();
-
-        img.addEventListener('load', () => {
-            let diff = img.naturalHeight / 432;
-
-            console.log(img.width / diff, img.naturalWidth);
-            this.map.canvas.style.backgroundImage = "url(/maps/" + "tamriel" + ".png)";
-            this.map.canvas.style.width = Math.floor(img.width / diff) + "px";
-        });
-
-        img.src = "/maps/" + "tamriel" + ".png";
-
-        // Create draggables
-        this.draggables['map'] = new Draggable('map', 10, 10, this, true);
-
         // toggle side
         this.side.toggle('info');
-
-        //if (this.host && player.isHost === true) {
-        //    this.host.loadTools();
-        //} else {
-            this.map.canvas.addEventListener('click', function (e) {
-                e.preventDefault();
-                let p;
-                for (p = 0; p < self.map.points.sections.length; p++) {
-                    let pos = self.getPos(e, self.map.canvas);
-                    let place = self.map.points.sections[p];
-                    self.map.detectPoly(place['area'], pos.x, pos.y, place['name']);
-                }
-            });
-            this.map.canvas.addEventListener('mousemove', function (e) {
-                let p;
-                for (p = 0; p < self.map.points.sections.length; p++) {
-                    let pos = self.getPos(e, self.map.canvas);
-                    let place = self.map.points.sections[p];
-                    let check = self.map.detectPoly(place['area'], pos.x, pos.y, place['name'], false);
-                    if (check !== "none") {
-                        return self.map.canvas.style.cursor = "pointer";
-                    }
-                }
-                self.map.canvas.style.cursor = "default";
-            });
-        //}
     }
 
     /**
@@ -100,78 +56,6 @@ class Engine {
         document.getElementById('info_population').innerText = info.population;
         document.getElementById('info_military').innerText = info.military;
         document.getElementById('info_food').innerText = info.food;
-    }
-
-    /**
-     * 
-     * @param {MouseEvent} e Mouse event
-     * @param {Element} target Element to get value from
-     * @returns {{'x': Number, 'y': Number}} Returns position of mouse relative to target element
-     */
-    getPos(e, target) {
-        let x;
-        let y;
-        if (e.pageX || e.pageY) {
-            x = e.pageX;
-            y = e.pageY;
-        } else {
-            x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
-            y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop;
-        }
-        x -= target.offsetLeft;
-        y -= target.offsetTop;
-        let pos = {};
-        pos.x = x;
-        pos.y = y;
-        return pos;
-    }
-}
-
-class GameMap {
-    constructor(game, points) {
-        this.game = game;
-        this.canvas = document.getElementById('map');
-        this.context = document.getElementById('map').getContext('2d');
-        this.points = points;
-    }
-
-    /**
-     * @param {[Number, Number]} verts An array of verticies
-     * @param {Number} testx X testing value
-     * @param {Number} testy Y testing value
-     * @param {String} name Name of territory
-     * @param {Boolean} set Auto set the territor info
-     */
-    detectPoly(verts, testx, testy, name, set) {
-        let vertx = [];
-        let verty = [];
-        let v;
-        for (v = 0; v < verts.length; v++) {
-            vertx[v] = verts[v].x;
-            verty[v] = verts[v].y;
-        }
-        let i, j, c = false;
-        for (i = 0, j = verts.length - 1; i < verts.length; j = i++) {
-            if ((verty[i] > testy != verty[j] > testy) && (testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i])) {
-                c = !c;
-            }
-        }
-        if (c === true) {
-            let info = {
-                title: name /*,
-                        owner: data.territories[name].owner,
-                        population: data.territories[name].population,
-                        military: data.territories[name].military,
-                        food: data.territories[name].food */
-            };
-            if (set === false) {
-                return info;
-            } else {
-                this.game.setInfo(info);
-            }
-        } else {
-            return "none";
-        }
     }
 }
 
@@ -197,7 +81,7 @@ class Bucket {
      * @param {number} color
      * @param {number} tolerance
      */
-    floodFill(x, y, color, tolerance) {
+    async floodFill(x, y, color, tolerance) {
         if (!this.isRendering) {
             this.isRendering = true;
 
@@ -208,31 +92,28 @@ class Bucket {
             let start = this.getPixelArrayIndex(x, y);
 
             let queue = [];
-            let self = this;
 
-            (function (node, targetColor, replacementColor, tolerance) {
-                queue.push(node);
+            let targetColor = Array.prototype.slice.call(this.bitmap.data, start, start + this.RGBA);
+            let replacementColor = color;
+            
+            queue.push(start);
 
-                while (queue.length) {
-                    node = queue.pop();
+            while (queue.length) {
+                let node = queue.pop();
 
-                    if (self.colorEquals(node, targetColor, tolerance)) {
-                        self.setColor(node, replacementColor);
+                if (this.colorEquals(node, targetColor, tolerance)) {
+                    this.setColor(node, replacementColor);
 
-                        for (let d = 0; d < 8; d++) {
-                            queue.push(self.getNode(d, node));
-                        }
+                    for (let d = 0; d < 8; d++) {
+                        queue.push(this.getNode(d, node));
                     }
                 }
-                self.ctx.putImageData(self.bitmap, 0, 0);
+            }
 
-                self.isRendering = false;
-            }(
-                start,
-                Array.prototype.slice.call(this.bitmap.data, start, start + this.RGBA),
-                color || [0, 0, 0, 0],
-                tolerance || 10
-            ));
+            this.ctx.putImageData(this.bitmap, 0, 0);
+
+            this.isRendering = false;
+            
         }
     }
 
@@ -245,7 +126,7 @@ class Bucket {
             return false;
         }
 
-        var diff = 0;
+        let diff = 0;
         for (var i = 0; i < this.RGBA; i += 1) {
             diff += Math.abs(this.bitmap.data[node + i] - color[i]);
         }
@@ -336,7 +217,7 @@ class Whiteboard {
         this.canvas.addEventListener('click', function (e) {
             e.preventDefault();
 
-            let pos = self.game.getPos(e, self.canvas);
+            let pos = self.getPos(e, self.canvas);
 
             switch (self.tool.selected) {
                 case 'text':
@@ -346,14 +227,14 @@ class Whiteboard {
                     self.ctx.fillText(msg, pos.x, pos.y);
                     break;
                 case 'fill':
-                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), 10);
+                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), 50);
                     break;
             }
         });
         this.canvas.addEventListener('mousedown', function (e) {
             switch (self.tool.selected) {
                 case 'pen':
-                    let pos = self.game.getPos(e, self.canvas);
+                    let pos = self.getPos(e, self.canvas);
                     self.savedPos = { x: pos.x, y: pos.y }
                     self.drawDot(pos.x, pos.y);
                     self.mouseDown = true;
@@ -364,7 +245,7 @@ class Whiteboard {
             switch (self.tool.selected) {
                 case 'pen':
                     if (self.mouseDown === true) {
-                        let { x, y } = self.game.getPos(e, self.canvas);
+                        let { x, y } = self.getPos(e, self.canvas);
                         self.drawDot(x, y);
                     }
                     break;
@@ -374,7 +255,7 @@ class Whiteboard {
             switch (self.tool.selected) {
                 case 'pen':
                     if (self.mouseDown === true) {
-                        let pos = self.game.getPos(e, self.canvas);
+                        let pos = self.getPos(e, self.canvas);
                         self.mouseDown = false;
                     }
                     break;
@@ -463,6 +344,310 @@ class Whiteboard {
         nextBtn.setAttribute('class', 'checked');
 
         this.tool.color = hex;
+    }
+
+    /**
+     * 
+     * @param {MouseEvent} e Mouse event
+     * @param {Element} target Element to get value from
+     * @returns {{'x': Number, 'y': Number}} Returns position of mouse relative to target element
+     */
+    getPos(e, target) {
+        let x;
+        let y;
+        if (e.pageX || e.pageY) {
+            x = e.pageX;
+            y = e.pageY;
+        } else {
+            x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+            y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+        }
+        x -= target.offsetLeft;
+        y -= target.offsetTop;
+        let pos = {};
+        pos.x = x;
+        pos.y = y;
+        return pos;
+    }
+}
+
+class GameMap {
+    /**
+     * 
+     * @param {Engine} game
+     * @param {Player} player
+     * @param {String} name
+     * @param {JSON} points
+     */
+    constructor(game, player, name, points) {
+        this.map = name;
+        this.game = game;
+        this.canvas = document.getElementById('map');
+        this.ctx = document.getElementById('map').getContext('2d');
+        this.points = points;
+
+        this.draggable = new Draggable('map', 10, 10, this.game, true);
+
+        // load tools
+        this.tool = {
+            color: "000",
+            selected: "info"
+        }
+        this.bucket = new Bucket(this.canvas);
+        this.mouseDown = false;
+
+        this.diff;
+        this.width;
+        this.height = 432;
+
+        // Add image to map
+        let img = document.getElementById('map-img');
+
+        img.addEventListener('load', () => {
+            this.diff = img.naturalHeight / 432;
+
+            img.width = img.naturalWidth / this.diff;
+            img.height = 432;
+            
+            this.width = img.width;
+            this.canvas.width = img.width;
+
+            this.canvas.height = this.height;
+
+            this.ctx.drawImage(img, 0, 0, img.width, img.height);
+        })
+
+        img.src = "/maps/" + name + ".png";
+
+        this.init();
+    }
+
+    init() {
+        let self = this;
+
+        //if (this.host && player.isHost === true) {
+        //    this.host.loadTools();
+        //} else {
+        this.canvas.addEventListener('click', function (e) {
+            e.preventDefault();
+
+            let pos = self.getPos(e, self.canvas);
+
+            switch (self.tool.selected) {
+                case 'info':
+                    for (let p = 0; p < self.points.sections.length; p++) {
+                        let place = self.points.sections[p];
+                        self.detectPoly(place['area'], pos.x, pos.y, place['name']);
+                    }
+                    break;
+                case 'text':
+                    let rect = self.canvas.getBoundingClientRect();
+                    let msg = document.getElementById('textbox-wb').value;
+                    self.ctx.font = "12px Arial";
+                    self.ctx.fillText(msg, pos.x, pos.y);
+                    break;
+                case 'fill':
+                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), 10);
+                    break;
+            }
+        });
+        this.canvas.addEventListener('mousedown', function (e) {
+            switch (self.tool.selected) {
+                case 'pen':
+                    let pos = self.getPos(e, self.canvas);
+                    self.savedPos = { x: pos.x, y: pos.y }
+                    self.drawDot(pos.x, pos.y);
+                    self.mouseDown = true;
+                    break;
+            }
+        });
+        this.canvas.addEventListener('mousemove', function (e) {
+            switch (self.tool.selected) {
+                case 'pen':
+                    if (self.mouseDown === true) {
+                        let { x, y } = self.getPos(e, self.canvas);
+                        self.drawDot(x, y);
+                    }
+                    break;
+                case 'info':
+                    for (let p = 0; p < self.points.sections.length; p++) {
+                        let { x, y } = self.getPos(e, self.canvas),
+                            place = self.points.sections[p];
+
+                        let check = self.detectPoly(place['area'], x, y, place['name'], false);
+                        if (check !== "none") {
+                            return self.canvas.style.cursor = "pointer";
+                        }
+                    }
+                    self.canvas.style.cursor = "default";
+                    break;
+            }
+        });
+        this.canvas.addEventListener('mouseup', function (e) {
+            switch (self.tool.selected) {
+                case 'pen':
+                    if (self.mouseDown === true) {
+                        let pos = self.getPos(e, self.canvas);
+                        self.mouseDown = false;
+                    }
+                    break;
+            }
+        });
+        //}
+    }
+
+    /**
+     * 
+     * @param {number} x Mouse X position
+     * @param {number} y Mouse Y position
+     */
+    drawDot(x, y) {
+        this.ctx.strokeStyle = "#" + this.tool.color;
+        // Draw filled line
+        this.ctx.beginPath();
+        this.ctx.lineCap = "round";
+        this.ctx.lineJoin = "round";
+        this.ctx.lineWidth = 4;
+        this.ctx.moveTo(this.savedPos.x, this.savedPos.y);
+        this.ctx.lineTo(x, y);
+        this.ctx.stroke();
+
+        this.savedPos = { x: x, y: y };
+    }
+
+    /**
+     * @param {[Number, Number]} verts An array of verticies
+     * @param {Number} testx X testing value
+     * @param {Number} testy Y testing value
+     * @param {String} name Name of territory
+     * @param {Boolean} set Auto set the territor info
+     */
+    detectPoly(verts, testx, testy, name, set) {
+        let vertx = [];
+        let verty = [];
+        let v;
+        for (v = 0; v < verts.length; v++) {
+            vertx[v] = verts[v].x;
+            verty[v] = verts[v].y;
+        }
+        let i, j, c = false;
+        for (i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+            if ((verty[i] > testy != verty[j] > testy) && (testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i])) {
+                c = !c;
+            }
+        }
+        if (c === true) {
+            let info = {
+                title: name /*,
+                        owner: data.territories[name].owner,
+                        population: data.territories[name].population,
+                        military: data.territories[name].military,
+                        food: data.territories[name].food */
+            };
+            if (set === false) {
+                return info;
+            } else {
+                this.game.setInfo(info);
+            }
+        } else {
+            return "none";
+        }
+    }
+
+    /**
+     * 
+     * @param {String} hex
+     * @param {Number} alpha
+     */
+    hexToRGBA(hex, alpha) {
+        let r, g, b;
+
+        if (hex.length === 6) {
+            r = parseInt(hex.slice(0, 2), 16);
+            g = parseInt(hex.slice(2, 4), 16);
+            b = parseInt(hex.slice(4, 6), 16);
+        } else {
+            r = parseInt(hex.slice(0, 1) + hex.slice(0, 1), 16);
+            g = parseInt(hex.slice(1, 2) + hex.slice(1, 2), 16);
+            b = parseInt(hex.slice(2, 3) + hex.slice(2, 3), 16);
+        }
+
+        if (alpha) {
+            return [r, g, b, alpha];
+        } else {
+            return [r, g, b, 255];
+        }
+    }
+
+    toggleTool(tool) {
+        let colors = document.getElementById('colors-map-container');
+        let text = document.getElementById('textbox-map-container');
+
+        if (this.tool.selected !== "none") {
+            let prevBtn = document.getElementById(this.tool.selected + '-map');
+            prevBtn.style.boxShadow = "none";
+        }
+
+        if (this.tool.selected === tool) {
+            let prevBtn = document.getElementById(this.tool.selected + '-map');
+            prevBtn.style.boxShadow = "none";
+
+            colors.setAttribute("class", "hidden");
+            text.setAttribute("class", "hidden");
+
+            this.tool.selected = "none";
+        } else {
+            if (tool === "pen" || tool === "fill") {
+                colors.setAttribute("class", "");
+                text.setAttribute("class", "hidden");
+            } else if (tool === "text") {
+                colors.setAttribute("class", "hidden");
+                text.setAttribute("class", "");
+            } else {
+                colors.setAttribute("class", "hidden");
+                text.setAttribute("class", "hidden");
+            }
+            let nextBtn = document.getElementById(tool + '-map');
+            nextBtn.style.boxShadow = "inset 0px 0px 2px 2px rgba(0,0,0,.075)";
+
+            this.tool.selected = tool;
+        }
+    }
+
+    toggleColor(hex) {
+        if (this.tool.color !== "none") {
+            let prevBtn = document.getElementById(this.tool.color + '-map');
+            prevBtn.setAttribute('class', '');
+        }
+
+        let nextBtn = document.getElementById(hex + '-map');
+        nextBtn.setAttribute('class', 'checked');
+
+        this.tool.color = hex;
+    }
+
+    /**
+     * 
+     * @param {MouseEvent} e Mouse event
+     * @param {Element} target Element to get value from
+     * @returns {{'x': Number, 'y': Number}} Returns position of mouse relative to target element
+     */
+    getPos(e, target) {
+        let x;
+        let y;
+        if (e.pageX || e.pageY) {
+            x = e.pageX;
+            y = e.pageY;
+        } else {
+            x = e.clientX + document.body.scrollLeft + document.documentElement.scrollLeft;
+            y = e.clientY + document.body.scrollTop + document.documentElement.scrollTop;
+        }
+        x -= target.offsetLeft;
+        y -= target.offsetTop;
+        let pos = {};
+        pos.x = x;
+        pos.y = y;
+        return pos;
     }
 }
 
