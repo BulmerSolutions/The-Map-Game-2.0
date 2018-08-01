@@ -50,6 +50,10 @@ html
                 color(style="background-color: #00e" onclick="game.whiteboard.toggleColor('00e')")#00e-btn
                 color(style="background-color: #90e" onclick="game.whiteboard.toggleColor('90e')")#90e-btn
                 color(style="background-color: #e0e" onclick="game.whiteboard.toggleColor('e0e')")#e0e-btn
+                form(style="display: inline-block; width: 100%; position: relative;" oninput="x.value=parseInt(a.value)").tooltip
+                    span(style="margin-left: 88px;").tooltiptext Tolerance
+                    input(name="a" style="display: inline-block; margin: 8px 4px 8px 4px; width: calc(100% - 60px); vertical-align: middle;" type="range" max=200 min=1 step=1 value=100)#tolerance-wb.slider
+                    output(id="x" for="tolerance-map" style="display: inline-block; width: 40px; height: 24px; vertical-align: middle;text-align: center;line-height: 24px;" value=100) 100
             span(style="border-bottom: 0;")#textbox-wb-container.hidden
                 input(style="display: block; padding: 6px; margin: 2px auto; width: calc(100% - 32px); font-size: 14px;" placeholder="text here!")#textbox-wb
             span Map
@@ -81,25 +85,32 @@ html
                 color(style="background-color: #e0e" onclick="game.map.toggleColor('e0e')")#e0e-map
                 form(style="display: inline-block; width: 100%; position: relative;" oninput="x.value=parseInt(a.value)").tooltip
                     span(style="margin-left: 88px;").tooltiptext Tolerance
-                    input(name="a" style="display: inline-block; margin: 8px 4px 8px 4px; width: calc(100% - 60px); vertical-align: middle;" type="range" max=150 min=1 step=1 value=100)#tolerance-map.slider
+                    input(name="a" style="display: inline-block; margin: 8px 4px 8px 4px; width: calc(100% - 60px); vertical-align: middle;" type="range" max=200 min=1 step=1 value=100)#tolerance-map.slider
                     output(id="x" for="tolerance-map" style="display: inline-block; width: 40px; height: 24px; vertical-align: middle;text-align: center;line-height: 24px;" value=100) 100
             span(style="border-bottom: 0;")#textbox-map-container.hidden
                 input(style="display: block; padding: 6px; margin: 2px auto; width: calc(100% - 32px); font-size: 14px;" placeholder="text here!")#textbox-map
             hr
         nav
-            item(title="Map Info" onclick="game.side.toggle('info')")#info-btn
+            item(onclick="game.side.toggle('info')")#info-btn.tooltip
+                span.tooltiptext Map Info
                 i.material-icons info
-            item(title="Edit Tools" onclick="game.side.toggle('edit')")#edit-btn
+            item(onclick="game.side.toggle('edit')")#edit-btn.tooltip
+                span.tooltiptext Edit Tools
                 i.material-icons edit
-            item(title="Chat")#chat-btn
+            item()#chat-btn.tooltip
+                span.tooltiptext Chat
                 i.material-icons chat_bubble_outline
-            item(title="Turn")#turn-btn
+            item()#turn-btn.tooltip
+                span.tooltiptext Turn
                 i.material-icons rotate_left
-            item(title="Settings")#settings-btn
+            item()#settings-btn.tooltip
+                span.tooltiptext Settings
                 i.material-icons settings
-            item(title="Players")#players-btn
+            item()#players-btn.tooltip
+                span.tooltiptext Players
                 i.material-icons supervisor_account
-            item(title="Exit")#exit-btn
+            item()#exit-btn.tooltip
+                span.tooltiptext Exit
                 i.material-icons exit_to_app
     script(src="/js/socket.io.slim.js")
     script(src="/js/draggable.js")

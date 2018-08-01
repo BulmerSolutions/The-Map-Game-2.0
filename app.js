@@ -73,6 +73,6 @@ app.use(function (err, req, res, next) {
 
 app.set('port', process.env.PORT || store.get('port'));
 
-server.listen(app.get('port'), function () {
+server.listen(app.get('port'), store.get('host'), function () {
     debug('Listening on port ' + server.address().port);
 });

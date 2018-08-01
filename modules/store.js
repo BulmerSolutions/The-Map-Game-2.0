@@ -3,9 +3,14 @@ const fs = require('fs');
 
 class Store {
 
-    constructor() {
-        this.path = path.join(__dirname, '../config.json');     // Path to Config.JSON
-        this.data = this.parseDataFile(this.path);              // Data stored in JSON file
+    /**
+     * 
+     * @param {string} filename Name of the desired file
+     * @param {JSON} defaults Default json
+     */
+    constructor(filename, defaults) {
+        this.path = path.join(__dirname, filename || '../config.json');     // Path to Config.JSON
+        this.data = this.parseDataFile(this.path, defaults);              // Data stored in JSON file
     }
     
     /**
@@ -41,19 +46,21 @@ class Store {
      * @param {JSON} defaults Custom set default settings.
      * @returns {JSON} Returns the default settings for the app. 
      */
-    parseDataFile(filePath) {
+    parseDataFile(filePath, defaults) {
         try {
             return JSON.parse(fs.readFileSync(filePath));
         } catch (error) {
 
-            let defaults = {
-                "port": 80,
-                "host": "0.0.0.0",
-                "mysql": {
-                    "host": "",
-                    "database": "",
-                    "user": "",
-                    "password": ""
+            if (!defaults) {
+                let defaults = {
+                    "port": 3000,
+                    "host": "0.0.0.0",
+                    "mysql": {
+                        "host": "",
+                        "database": "",
+                        "user": "",
+                        "password": ""
+                    }
                 }
             }
 

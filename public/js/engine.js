@@ -35,6 +35,25 @@ class Engine {
             }
         };
 
+        this.mapping = {
+            'fill': {
+                'type': 0,
+                'args': ['x', 'y', 'r', 'g', 'b', 'a', 'tolerance']
+            },
+            'pen': {
+                'type': 1,
+                'args': ['x0', 'y0', 'x1', 'y1', 'r', 'g', 'b', 'a']
+            },
+            'undo': {
+                'type': 2,
+                'args': []
+            },
+            'text': {
+                'type': 3,
+                'args': ['text', 'x', 'y']
+            }
+        }
+
         // Run init to setup game
         this.init();
     }
@@ -68,16 +87,68 @@ class Engine {
             }
         });
 
-        this.imageChunks = [];
+        this.socket.on('receive-map', (dataURL, stack) => {
 
-        this.socket.on('image-data', (data) => {
-            this.imageChunks.push(data);
             // Add image to map
             let img = document.getElementById('map-img');
-            img.src = "data:image/png;base64," + window.btoa(this.imageChunks);
 
-            this.map.ctx.drawImage(img, 0, 0, img.width, img.height);
+            img.addEventListener('load', () => {
+                this.map.diff = img.naturalHeight / this.map.height;
+
+                img.width = img.naturalWidth / this.map.diff;
+                img.height = 432;
+
+                this.map.width = img.width;
+                this.map.canvas.width = img.width;
+
+                this.map.canvas.height = this.map.height;
+
+                this.map.ctx.drawImage(img, 0, 0, img.width, img.height);
+
+                // insert cached stack into map
+
+                let doCheck = (stack, i) => {
+                    if (i < stack.length) {
+                        console.log(i, stack[i]);
+                        let index = i + 2;
+                        switch (stack[i]) {
+                            case this.mapping.fill.type:
+                                this.map.bucket.floodFill(stack[i + 1], stack[i + 2], [stack[i + 3], stack[i + 4], stack[i + 5], stack[i + 6]], stack[i + 7], false);
+                                index += this.mapping.fill.args.length;
+                                break;
+                            case this.mapping.pen.type:
+                                this.map.drawDot(stack[i + 1], stack[i + 2], stack[i + 3], stack[i + 4], [stack[i + 5], stack[i + 6], stack[i + 7], stack[i + 8]], false);
+                                index += this.mapping.pen.args.length;
+                                break;
+                            case this.mapping.text.type:
+                                this.map.ctx.font = "12px Arial";
+                                this.map.ctx.fillText(stack[i + 1], stack[i + 2], stack[i + 3]);
+                                index += this.mapping.text.args.length;
+                                break;
+                            case this.mapping.undo.type:
+                                this.map.bucket.undo();
+                                index += this.mapping.undo.args.length;
+                                break;
+                        }
+                        doCheck(stack, index);
+                    } else {
+                        return true;
+                    }
+                }
+
+                doCheck(stack, 0);
+            });
+
+            img.src = dataURL;
         });
+
+        this.socket.on('request-map', () => {
+            let dataURL = this.map.canvas.toDataURL();
+            this.socket.emit('map-image', dataURL);
+        });
+
+        // Call `request-map` from server
+        this.socket.emit('request-map');
     }
 
     /**
@@ -194,11 +265,6 @@ class Bucket {
                     color: color,
                     tolerance: tolerance
                 });
-
-                this.canvas.toBlob((blob) => {
-                    console.log('sending');
-                    this.game.socket.emit('map-image', blob);
-                }, "image/png");
             };
             
         }
@@ -333,13 +399,13 @@ class Whiteboard {
 
             switch (self.tool.selected) {
                 case 'text':
-                    let rect = self.canvas.getBoundingClientRect();
                     let msg = document.getElementById('textbox-wb').value;
                     self.ctx.font = "12px Arial";
                     self.ctx.fillText(msg, pos.x, pos.y);
                     break;
                 case 'fill':
-                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), 50);
+                    let tolerance = Number.parseInt(document.getElementById('tolerance-wb').value);
+                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), tolerance);
                     break;
             }
         });
@@ -494,6 +560,11 @@ class GameMap {
     constructor(game, player, name, points) {
         this.map = name;
         this.game = game;
+
+        /**
+         * @namespace GameMap@canvas
+         * @type {HTMLCanvasElement}
+         */
         this.canvas = document.getElementById('map');
         this.ctx = document.getElementById('map').getContext('2d');
         this.points = points;
@@ -512,25 +583,6 @@ class GameMap {
         this.diff;
         this.width;
         this.height = 432;
-
-        // Add image to map
-        let img = document.getElementById('map-img');
-
-        img.addEventListener('load', () => {
-            this.diff = img.naturalHeight / 432;
-
-            img.width = img.naturalWidth / this.diff;
-            img.height = 432;
-
-            this.width = img.width;
-            this.canvas.width = img.width;
-
-            this.canvas.height = this.height;
-
-            this.ctx.drawImage(img, 0, 0, img.width, img.height);
-        })
-
-        img.src = "/maps/" + name + ".png";
 
         this.init();
     }
@@ -560,7 +612,7 @@ class GameMap {
                     self.ctx.fillText(msg, pos.x, pos.y);
                     break;
                 case 'fill':
-                    let tolerance = document.getElementById('tolerance-map').value;
+                    let tolerance = Number.parseInt(document.getElementById('tolerance-map').value);
                     self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), tolerance, true);
                     break;
             }
@@ -568,8 +620,8 @@ class GameMap {
         this.canvas.addEventListener('mousedown', function (e) {
             switch (self.tool.selected) {
                 case 'pen':
-                    let pos = self.getPos(e, self.canvas);
-                    self.savedPos = { x: pos.x, y: pos.y }
+                    let { x, y } = self.getPos(e, self.canvas);
+                    self.savedPos = { x: x, y: y };
                     self.mouseDown = true;
                     break;
             }
@@ -579,7 +631,7 @@ class GameMap {
                 case 'pen':
                     if (self.mouseDown === true) {
                         let { x, y } = self.getPos(e, self.canvas);
-                        self.drawDot(self.savedPos.x, self.savedPos.y, x, y, self.tool.color, true);
+                        self.drawDot(self.savedPos.x, self.savedPos.y, x, y, self.hexToRGBA(self.tool.color, 255), true);
                     }
                     break;
                 case 'info':
@@ -618,7 +670,7 @@ class GameMap {
      * @param {string} color Draw hex color
      */
     drawDot(x0, y0, x1, y1, color, emit) {
-        this.ctx.strokeStyle = "#" + color;
+        this.ctx.strokeStyle = "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + color[3] / 255 + ")";
         // Draw filled line
         this.ctx.beginPath();
         this.ctx.lineCap = "round";
@@ -1148,7 +1200,10 @@ let points = {
 };
 
 const game = new Engine({
-    'map': { 'points': points },
+    'map': {
+        'name': 'tamriel',
+        'points': points
+    },
     'player': {
         'name': '',
         'isHost': false
