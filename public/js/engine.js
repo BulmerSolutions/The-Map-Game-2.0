@@ -48,8 +48,7 @@ class Engine {
 
         // set up socket connections
         this.socket.on('connect', () => {
-            console.log('Connected', 'Grabing saved map');
-            this.socket.emit('get-image', {});
+            console.log('Connected');
         });
 
         this.socket.on('fill', (data) => {
@@ -69,13 +68,13 @@ class Engine {
             }
         });
 
-        let imageChunks = [];
+        this.imageChunks = [];
 
         this.socket.on('image-data', (data) => {
-            imageChunks.push(data);
+            this.imageChunks.push(data);
             // Add image to map
             let img = document.getElementById('map-img');
-            img.src = "data:image/png;base64," + window.btoa(imageChunks);
+            img.src = "data:image/png;base64," + window.btoa(this.imageChunks);
 
             this.map.ctx.drawImage(img, 0, 0, img.width, img.height);
         });

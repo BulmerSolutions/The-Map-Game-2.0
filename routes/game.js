@@ -4,6 +4,8 @@ var router = express.Router();
 var path = require('path');
 var fs = require('fs');
 
+var players = {};
+
 /* GET page to enter game pin */
 router.get('/', function (req, res) {
     res.render('game/join', { title: 'The Map Game' });
@@ -25,11 +27,11 @@ router.get('/:pin', function (req, res) {
      * @type {SocketIO}
      * */
     let io = req.app.get('socketio');
-    let players = {};
 
     io.on('connection', socket => {
 
         if (!players[socket.id]) {
+            console.log(players[socket.id]);
             console.log('New Socket with ID: ', socket.id);
             socket.ip = socket.handshake.headers['x-forwarded-for'];
             console.log('Player IP: ', socket.ip);
@@ -37,30 +39,27 @@ router.get('/:pin', function (req, res) {
             players[socket.id] = {
                 'ip': socket.ip
             };
+            
+            let filename = "servers/" + req.params.pin + ".png";
+            let file = fs.createReadStream(filename, {
+                "encoding": "binary"
+            });
+
+            file.on('readable', () => {
+                console.log('Image loading');
+            });
+
+            file.on('data', (chunk) => {
+                socket.emit('image-data', chunk);
+            });
+
+            file.on('end', () => {
+                console.log('Image loaded');
+            });
 
             socket.on('disconnect', () => {
                 console.log(`User with id: ${socket.id} disconnected.`);
                 delete players[socket.id];
-            })
-
-            socket.on('get-image', () => {
-                console.log('sending image');
-                let filename = "servers/" + req.params.pin + ".png";
-                let file = fs.createReadStream(filename, {
-                    "encoding": "binary"
-                });
-
-                file.on('readable', () => {
-                    console.log('Image loading');
-                });
-
-                file.on('data', (chunk) => {
-                    socket.emit('image-data', chunk);
-                });
-
-                file.on('end', () => {
-                    console.log('Image loaded');
-                });
             });
 
             socket.on('fill', data => {
