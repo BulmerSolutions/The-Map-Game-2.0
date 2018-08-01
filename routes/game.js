@@ -1,6 +1,8 @@
 ﻿'use strict';
 var express = require('express');
 var router = express.Router();
+var path = require('path');
+var fs = require('fs');
 
 /* GET page to enter game pin */
 router.get('/', function (req, res) {
@@ -18,32 +20,72 @@ router.get('/:pin', function (req, res) {
     //res.send('Game pin is: ' + req.params.pin);
 
     // Create Socket IO connections here
+    /**
+     * @namespace io
+     * @type {SocketIO}
+     * */
     let io = req.app.get('socketio');
-    let socket_id = [];
+    let players = {};
 
     io.on('connection', socket => {
-        socket_id.push(socket.id);
-        if (socket_id[0] === socket.id) {
-            // remove the connection listener for any subsequent 
-            // connections with the same ID
-            io.removeAllListeners('connection');
+
+        if (!players[socket.id]) {
+            console.log('New Socket with ID: ', socket.id);
+            socket.ip = socket.handshake.headers['x-forwarded-for'];
+            console.log('Player IP: ', socket.ip);
+
+            players[socket.id] = {
+                'ip': socket.ip
+            };
+
+            socket.on('disconnect', () => {
+                console.log(`User with id: ${socket.id} disconnected.`);
+                delete players[socket.id];
+            })
+
+            socket.on('get-image', () => {
+                console.log('sending image');
+                let filename = "servers/" + req.params.pin + ".png";
+                let file = fs.createReadStream(filename, {
+                    "encoding": "binary"
+                });
+
+                file.on('readable', () => {
+                    console.log('Image loading');
+                });
+
+                file.on('data', (chunk) => {
+                    socket.emit('image-data', chunk);
+                });
+
+                file.on('end', () => {
+                    console.log('Image loaded');
+                });
+            });
+
+            socket.on('fill', data => {
+                socket.broadcast.emit('fill', data);
+            });
+
+            socket.on('pen', data => {
+                socket.broadcast.emit('pen', data);
+            });
+
+            socket.on('undo', data => {
+                socket.broadcast.emit('undo', data);
+            });
+
+            socket.on('text', data => {
+                socket.broadcast.emit('text', data);
+            });
+
+            socket.on('map-image', function (buffer) {
+                let filename = "servers/" + req.params.pin + ".png";
+                let file = fs.createWriteStream(filename);
+                file.write(buffer);
+                file.end();
+            });
         }
-
-        socket.on('fill', data => {
-            socket.broadcast.emit('fill', data);
-        });
-
-        socket.on('pen', data => {
-            socket.broadcast.emit('pen', data);
-        });
-
-        socket.on('undo', data => {
-            socket.broadcast.emit('undo', data);
-        });
-
-        socket.on('text', data => {
-            socket.broadcast.emit('text', data);
-        });
 
     });
 });

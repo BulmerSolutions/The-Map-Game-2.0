@@ -71,7 +71,7 @@ app.use(function (err, req, res, next) {
     });
 });
 
-app.set('port', process.env.PORT || 80);
+app.set('port', process.env.PORT || store.get('port'));
 
 server.listen(app.get('port'), function () {
     debug('Listening on port ' + server.address().port);

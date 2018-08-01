@@ -6,7 +6,7 @@ class Engine {
      */
     constructor(opts) {
         this.version = '0.1.0';
-
+        
         this.socket = io('/');
 
         this.player = new Player(opts.player);
@@ -45,6 +45,40 @@ class Engine {
 
         // toggle side
         this.side.toggle('info');
+
+        // set up socket connections
+        this.socket.on('connect', () => {
+            console.log('Connected', 'Grabing saved map');
+            this.socket.emit('get-image', {});
+        });
+
+        this.socket.on('fill', (data) => {
+            let { x, y, color, tolerance } = data;
+            this.map.bucket.floodFill(x, y, color, tolerance);
+        });
+
+        this.socket.on('pen', (data) => {
+            let { x0, y0, x1, y1, color } = data;
+            this.map.drawDot(x0, y0, x1, y1, color);
+        });
+
+        this.socket.on('undo', () => {
+            if (!this.map.bucket.isUndoing) {
+                this.map.bucket.isUndoing = true;
+                this.map.bucket.undo();
+            }
+        });
+
+        let imageChunks = [];
+
+        this.socket.on('image-data', (data) => {
+            imageChunks.push(data);
+            // Add image to map
+            let img = document.getElementById('map-img');
+            img.src = "data:image/png;base64," + window.btoa(imageChunks);
+
+            this.map.ctx.drawImage(img, 0, 0, img.width, img.height);
+        });
     }
 
     /**
@@ -73,7 +107,15 @@ class Bucket {
         this.RGBA = 4;      // how many indexs per pixel
         this.queue = [];
 
+        /**
+         * @namespace Bucket#canvas
+         * @type {HTMLCanvasElement}
+         * */
         this.canvas = canvas;
+        /**
+         * @namespace Bucket#ctx
+         * @type {CanvasRenderingContext2D}
+         * */
         this.ctx = canvas.getContext('2d');
         
         this.history = [];
@@ -105,59 +147,67 @@ class Bucket {
     async floodFill(x, y, color, tolerance, emit) {
         if (!this.isRendering) {
 
-            this.isRendering = true;
-
-            this.reloadBitmap();
-
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
             let start = this.getPixelArrayIndex(x, y);
-
             let queue = [];
-
             let targetColor = Array.prototype.slice.call(this.bitmap.data, start, start + this.RGBA);
-            let replacementColor = color;
 
             // Save changes
             let history = {
                 'prevColor': targetColor,
                 'pixels': []
             };
-            
-            queue.push(start);
 
-            while (queue.length) {
-                let node = queue.pop();
+            if (!(Math.abs(color[0] - targetColor[0]) <= tolerance &&
+                Math.abs(color[1] - targetColor[1]) <= tolerance &&
+                Math.abs(color[2] - targetColor[2]) <= tolerance &&
+                Math.abs(color[3] - targetColor[3]) <= tolerance)) {
 
-                if (this.colorEquals(node, targetColor, tolerance)) {
-                    this.setColor(node, replacementColor);
-                    history.pixels.push(node);
+                this.isRendering = true;
 
-                    for (let d = 0; d < 8; d++) {
-                        queue.push(this.getNode(d, node));
+                this.reloadBitmap();
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                queue.push(start);
+
+                while (queue.length) {
+                    let node = queue.pop();
+
+                    if (this.colorEquals(node, targetColor, tolerance)) {
+                        this.setColor(node, color);
+                        history.pixels.push(node);
+
+                        for (let d = 0; d < 8; d++) {
+                            queue.push(this.getNode(d, node));
+                        }
                     }
                 }
-            }
 
-            this.ctx.putImageData(this.bitmap, 0, 0);
-            // save history to stack
-            this.history.push(history);
-            this.isRendering = false;
+                this.ctx.putImageData(this.bitmap, 0, 0);
+                // save history to stack
+                this.history.push(history);
+                this.isRendering = false;
 
-            if (!emit) { return; }
+                if (!emit) { return; }
 
-            this.game.socket.emit('fill', {
-                x: x,
-                y: y,
-                color: color,
-                tolerance: tolerance
-            });
+                this.game.socket.emit('fill', {
+                    x: x,
+                    y: y,
+                    color: color,
+                    tolerance: tolerance
+                });
+
+                this.canvas.toBlob((blob) => {
+                    console.log('sending');
+                    this.game.socket.emit('map-image', blob);
+                }, "image/png");
+            };
             
         }
     }
 
     undo(emit) {
         if (this.isUndoing) {
+            
             if (this.history.length > 0) {
                 // get last item from histoty
                 let history = this.history.pop();
@@ -173,12 +223,15 @@ class Bucket {
                 this.ctx.putImageData(this.bitmap, 0, 0);
             }
 
-            this.isUndoing = false;
+            setTimeout(() => {
+                this.isUndoing = false;
+            }, 200);
         }
 
         if (!emit) { return; }
 
         this.game.socket.emit('undo', {});
+        
     }
 
     reloadBitmap() {
@@ -215,28 +268,16 @@ class Bucket {
         let n = 0;
         switch (direction) {
             case 0:
-                n = -this.bitmap.width - 1; // up and left
-                break;
-            case 1:
                 n = -this.bitmap.width; // up
                 break;
-            case 2:
-                n = -this.bitmap.width + 1; // up and right
-                break;
-            case 3:
+            case 1:
                 n = -1; // left
                 break;
-            case 4:
+            case 2:
                 n = 1; // right
                 break;
-            case 5:
-                n = this.bitmap.width - 1; // down and left
-                break;
-            case 6:
+            case 3:
                 n = this.bitmap.width; // down
-                break;
-            case 5:
-                n = this.bitmap.width + 1; // down and right
                 break;
         }
 
@@ -481,7 +522,7 @@ class GameMap {
 
             img.width = img.naturalWidth / this.diff;
             img.height = 432;
-            
+
             this.width = img.width;
             this.canvas.width = img.width;
 
@@ -1127,18 +1168,3 @@ function throttle(callback, delay) {
         }
     };
 }
-
-game.socket.on('fill', (data) => {
-    let { x, y, color, tolerance } = data;
-    game.map.bucket.floodFill(x, y, color, tolerance);
-});
-
-game.socket.on('pen', (data) => {
-    let { x0, y0, x1, y1, color } = data;
-    game.map.drawDot(x0, y0, x1, y1, color);
-});
-
-game.socket.on('undo', () => {
-    game.map.bucket.isUndoing = true;
-    game.map.bucket.undo();
-});
