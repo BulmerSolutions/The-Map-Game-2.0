@@ -61,7 +61,7 @@ class Store {
                         "user": "",
                         "password": ""
                     }
-                }
+                };
             }
 
             fs.writeFileSync(filePath, JSON.stringify(defaults));

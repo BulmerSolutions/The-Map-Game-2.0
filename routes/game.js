@@ -8,7 +8,7 @@ var Store = require('../modules/store');
 const mapping = {
     'fill': {
         'type': 0,
-        'args': [ 'x', 'y', 'r', 'g', 'b', 'a', 'tolerance']
+        'args': ['x', 'y', 'r', 'g', 'b', 'a', 'tolerance']
     },
     'pen': {
         'type': 1,
@@ -22,9 +22,7 @@ const mapping = {
         'type': 3,
         'args': ['x', 'y', 'text']
     }
-}
-
-var stack = [];
+};
 
 /* GET page to enter game pin */
 router.get('/', function (req, res) {
@@ -40,6 +38,8 @@ router.post('/', function (req, res) {
 router.get('/:pin', function (req, res) {
 
     let game = new Store('../servers/game-' + req.params.pin + '.json', { 'players': {} });
+
+    var stack = [];
 
     res.render('game/game', { title: 'The Map Game' });
     //res.send('Game pin is: ' + req.params.pin);
@@ -71,6 +71,7 @@ router.get('/:pin', function (req, res) {
 
             let checkStack = () => {
                 if (stack.length > 2000) {
+                    stack = [];
                     socket.emit('request-map');
                 }
             };
@@ -112,8 +113,29 @@ router.get('/:pin', function (req, res) {
 
             socket.on('text', data => {
                 socket.broadcast.emit('text', data);
-                stack.push(mapping.undo.type, 999);
+                stack.push(mapping.text.type, data.msg, data.x, data.y, 999);
                 checkStack();
+            });
+
+            socket.on('save-map', () => {
+                stack = [];
+                socket.emit('request-map');
+            });
+
+            socket.on('clear-map', () => {
+                stack = [];
+                socket.broadcast.emit('receive-map', '/maps/' + "tamriel" + ".png", stack);
+                socket.emit('receive-map', '/maps/' + "tamriel" + ".png", stack);
+            });
+
+            socket.on('refresh-map', () => {
+                if (fs.existsSync(filename)) {
+                    let fileRead = fs.readFile(filename, 'utf8', (err, data) => {
+                        socket.emit('receive-map', data, stack);
+                    });
+                } else {
+                    socket.emit('receive-map', '/maps/' + "tamriel" + ".png", stack);
+                }
             });
 
             socket.on('map-image', dataURL => {
@@ -121,7 +143,6 @@ router.get('/:pin', function (req, res) {
                 fileWrite.write(dataURL, err => {
                     if (err) console.log(err);
                     else {
-                        stack = [];
                         console.log('Map image saved.');
                     }
                 });

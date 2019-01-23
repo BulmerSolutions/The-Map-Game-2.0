@@ -14,6 +14,7 @@ html
         tab Notes
     side
         content#info
+            span Players online: ###
             span#info_title Nothing Selected
             table
                 tr.info_data
@@ -28,90 +29,83 @@ html
                 tr.info_data
                     td Food Production:
                     td#info_food 0
-        content#edit
+        content(style="overflow-y: unset;")#edit
             span Whiteboard
-            item(onclick="game.whiteboard.toggleTool('pen')")#pen-wb.tooltip
-                span.tooltiptext Draw
+            item(onclick="game.whiteboard.toggleTool('pen')" tooltip="Draw")#pen-wb
                 i.material-icons create
-            item(onclick="game.whiteboard.toggleTool('text')")#text-wb.tooltip
-                span.tooltiptext Text
+            item(onclick="game.whiteboard.toggleTool('text')" tooltip="Text")#text-wb
                 i.material-icons title
-            item(onclick="game.whiteboard.toggleTool('fill')")#fill-wb.tooltip
-                span.tooltiptext Fill
+            item(onclick="game.whiteboard.toggleTool('fill')" tooltip="Fill")#fill-wb
                 i.material-icons format_color_fill
             colors#colors-wb-container.hidden
-                color(style="background-color: #fff; border: 1px solid #cfcfcf;" onclick="game.whiteboard.toggleColor('fff')")#fff-btn
-                color(style="background-color: #000" onclick="game.whiteboard.toggleColor('000')")#000-btn.checked
+                color(style="background-color: #fff; border: 1px solid #cfcfcf; width: 22px; height: 22px;" onclick="game.whiteboard.toggleColor('fff')")#fff-btn
+                color(style="background-color: #777" onclick="game.whiteboard.toggleColor('777')")#777-btn.checked
                 color(style="background-color: #e00" onclick="game.whiteboard.toggleColor('e00')")#e00-btn
+                color(style="background-color: #800" onclick="game.whiteboard.toggleColor('800')")#800-btn
+                color(style="background-color: #630" onclick="game.whiteboard.toggleColor('630')")#630-btn
                 color(style="background-color: #e80" onclick="game.whiteboard.toggleColor('e80')")#e80-btn
                 color(style="background-color: #ee0" onclick="game.whiteboard.toggleColor('ee0')")#ee0-btn
                 color(style="background-color: #0c0" onclick="game.whiteboard.toggleColor('0c0')")#0c0-btn
-                color(style="background-color: #0cc" onclick="game.whiteboard.toggleColor('0cc')")#0cc-btn
-                color(style="background-color: #00e" onclick="game.whiteboard.toggleColor('00e')")#00e-btn
+                color(style="background-color: #393" onclick="game.whiteboard.toggleColor('393')")#393-btn
+                color(style="background-color: #0cf" onclick="game.whiteboard.toggleColor('0cf')")#0cf-btn
+                color(style="background-color: #06f" onclick="game.whiteboard.toggleColor('06f')")#06f-btn
                 color(style="background-color: #90e" onclick="game.whiteboard.toggleColor('90e')")#90e-btn
-                color(style="background-color: #e0e" onclick="game.whiteboard.toggleColor('e0e')")#e0e-btn
-                form(style="display: inline-block; width: 100%; position: relative;" oninput="x.value=parseInt(a.value)").tooltip
-                    span(style="margin-left: 88px;").tooltiptext Tolerance
-                    input(name="a" style="display: inline-block; margin: 8px 4px 8px 4px; width: calc(100% - 60px); vertical-align: middle;" type="range" max=200 min=1 step=1 value=100)#tolerance-wb.slider
+                color(style="background-color: #f6c" onclick="game.whiteboard.toggleColor('f6c')")#f6c-btn
+                form(style="display: inline-block; width: 100%; position: relative;" oninput="x.value=parseInt(a.value)")
+                    input(name="a" style="display: inline-block; margin: 8px 4px 8px 4px; width: calc(100% - 60px); vertical-align: middle;" tooltip="Tolerance" type="range" max=200 min=1 step=1 value=100)#tolerance-wb.slider
                     output(id="x" for="tolerance-map" style="display: inline-block; width: 40px; height: 24px; vertical-align: middle;text-align: center;line-height: 24px;" value=100) 100
             span(style="border-bottom: 0;")#textbox-wb-container.hidden
                 input(style="display: block; padding: 6px; margin: 2px auto; width: calc(100% - 32px); font-size: 14px;" placeholder="text here!")#textbox-wb
             span Map
-            item(onclick="game.map.toggleTool('info')" style="box-shadow: rgba(0, 0, 0, 0.075) 0px 0px 2px 2px inset;")#info-map.tooltip
-                span.tooltiptext Info
-                i.material-icons info
-            item(onclick="game.map.toggleTool('move')")#move-map.tooltip
-                span.tooltiptext Move
-                i.material-icons pan_tool
-            item(onclick="game.map.toggleTool('pen')")#pen-map.tooltip
-                span.tooltiptext Draw
+            item(onclick="game.map.toggleTool('pen')" tooltip="Draw")#pen-map
                 i.material-icons create
-            item(onclick="game.map.toggleTool('text')")#text-map.tooltip
-                span.tooltiptext Text
+            item(onclick="game.map.toggleTool('text')" tooltip="Text")#text-map
                 i.material-icons title
-            item(onclick="game.map.toggleTool('fill')")#fill-map.tooltip
-                span.tooltiptext Fill
+            item(onclick="game.map.toggleTool('fill')" tooltip="Fill")#fill-map
                 i.material-icons format_color_fill
+            item(onclick="game.map.toggleTool('save')" tooltip="Save Map")#save-map
+                i.material-icons save
+            item(onclick="game.map.toggleTool('clear')" tooltip="Clear Map")#clear-map
+                i.material-icons restore
+            item(onclick="game.map.toggleTool('refresh')" tooltip="Refresh Map")#refresh-map
+                i.material-icons refresh
             colors#colors-map-container.hidden
                 color(style="background-color: #fff; border: 1px solid #cfcfcf;" onclick="game.map.toggleColor('fff')")#fff-map
-                color(style="background-color: #000" onclick="game.map.toggleColor('000')")#000-map.checked
+                color(style="background-color: #777" onclick="game.map.toggleColor('777')")#777-map.checked
                 color(style="background-color: #e00" onclick="game.map.toggleColor('e00')")#e00-map
+                color(style="background-color: #800" onclick="game.map.toggleColor('800')")#800-map
+                color(style="background-color: #630" onclick="game.map.toggleColor('630')")#630-map
                 color(style="background-color: #e80" onclick="game.map.toggleColor('e80')")#e80-map
                 color(style="background-color: #ee0" onclick="game.map.toggleColor('ee0')")#ee0-map
                 color(style="background-color: #0c0" onclick="game.map.toggleColor('0c0')")#0c0-map
-                color(style="background-color: #0cc" onclick="game.map.toggleColor('0cc')")#0cc-map
-                color(style="background-color: #00e" onclick="game.map.toggleColor('00e')")#00e-map
+                color(style="background-color: #393" onclick="game.map.toggleColor('393')")#393-map
+                color(style="background-color: #0cf" onclick="game.map.toggleColor('0cf')")#0cf-map
+                color(style="background-color: #06f" onclick="game.map.toggleColor('06f')")#06f-map
                 color(style="background-color: #90e" onclick="game.map.toggleColor('90e')")#90e-map
-                color(style="background-color: #e0e" onclick="game.map.toggleColor('e0e')")#e0e-map
-                form(style="display: inline-block; width: 100%; position: relative;" oninput="x.value=parseInt(a.value)").tooltip
-                    span(style="margin-left: 88px;").tooltiptext Tolerance
-                    input(name="a" style="display: inline-block; margin: 8px 4px 8px 4px; width: calc(100% - 60px); vertical-align: middle;" type="range" max=200 min=1 step=1 value=100)#tolerance-map.slider
+                color(style="background-color: #f6c" onclick="game.map.toggleColor('f6c')")#f6c-map
+                form(style="display: inline-block; width: 100%; position: relative;" oninput="x.value=parseInt(a.value)")
+                    input(name="a" tooltip="Tolerance" type="range" max=200 min=1 step=1 value=100)#tolerance-map.slider
                     output(id="x" for="tolerance-map" style="display: inline-block; width: 40px; height: 24px; vertical-align: middle;text-align: center;line-height: 24px;" value=100) 100
+                form(style="display: inline-block; width: 100%; position: relative;" oninput="y.value=parseInt(a.value)")
+                    input(name="a" tooltip="Opacity" type="range" max=100 min=10 step=5 value=100)#opacity-map.slider
+                    output(id="y" for="opacity-map" style="display: inline-block; width: 40px; height: 24px; vertical-align: middle;text-align: center;line-height: 24px;" value=100) 100
             span(style="border-bottom: 0;")#textbox-map-container.hidden
                 input(style="display: block; padding: 6px; margin: 2px auto; width: calc(100% - 32px); font-size: 14px;" placeholder="text here!")#textbox-map
             hr
         nav
-            item(onclick="game.side.toggle('info')")#info-btn.tooltip
-                span.tooltiptext Map Info
+            item(onclick="game.side.toggle('info');" tooltip="Map Info")#info-btn
                 i.material-icons info
-            item(onclick="game.side.toggle('edit')")#edit-btn.tooltip
-                span.tooltiptext Edit Tools
+            item(onclick="game.side.toggle('edit')" tooltip="Edit Tools")#edit-btn
                 i.material-icons edit
-            item()#chat-btn.tooltip
-                span.tooltiptext Chat
+            item( tooltip="Chat")#chat-btn
                 i.material-icons chat_bubble_outline
-            item()#turn-btn.tooltip
-                span.tooltiptext Turn
+            item( tooltip="Turn")#turn-btn
                 i.material-icons rotate_left
-            item()#settings-btn.tooltip
-                span.tooltiptext Settings
+            item( tooltip="Settings")#settings-btn
                 i.material-icons settings
-            item()#players-btn.tooltip
-                span.tooltiptext Players
+            item( tooltip="Players")#players-btn
                 i.material-icons supervisor_account
-            item()#exit-btn.tooltip
-                span.tooltiptext Exit
+            item( tooltip="Exit")#exit-btn
                 i.material-icons exit_to_app
     script(src="/js/socket.io.slim.js")
-    script(src="/js/draggable.js")
     script(src="/js/engine.js")

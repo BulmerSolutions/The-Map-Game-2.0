@@ -13,6 +13,8 @@ class Engine {
         this.whiteboard = new Whiteboard(this, this.player);
         this.map = new GameMap(this, this.player, "tamriel", opts.map.points);
 
+
+        let self = this;
         // create engine variables
         this.side = {
             screen: null,
@@ -23,6 +25,10 @@ class Engine {
 
                     prevBtn.style.boxShadow = "none";
                     prevScreen.style.display = "none";
+                }
+
+                if (tab === "info") {
+                    self.map.toggleTool('info');
                 }
 
                 let nextBtn = document.getElementById(tab + '-btn');
@@ -80,6 +86,12 @@ class Engine {
             this.map.drawDot(x0, y0, x1, y1, color);
         });
 
+        this.socket.on('text', (data) => {
+            let { msg, x, y } = data;
+            this.map.ctx.font = "bold 12px sans-serif";
+            this.map.ctx.fillText(msg, x, y);
+        });
+
         this.socket.on('undo', () => {
             if (!this.map.bucket.isUndoing) {
                 this.map.bucket.isUndoing = true;
@@ -109,7 +121,6 @@ class Engine {
 
                 let doCheck = (stack, i) => {
                     if (i < stack.length) {
-                        console.log(i, stack[i]);
                         let index = i + 2;
                         switch (stack[i]) {
                             case this.mapping.fill.type:
@@ -121,7 +132,7 @@ class Engine {
                                 index += this.mapping.pen.args.length;
                                 break;
                             case this.mapping.text.type:
-                                this.map.ctx.font = "12px Arial";
+                                this.map.ctx.font = "bold 12px sans-serif";
                                 this.map.ctx.fillText(stack[i + 1], stack[i + 2], stack[i + 3]);
                                 index += this.mapping.text.args.length;
                                 break;
@@ -152,7 +163,6 @@ class Engine {
     }
 
     /**
-     * @param {Engine} game Game class
      * @param {JSON} info Territory information
      */
     setInfo(info) {
@@ -169,8 +179,8 @@ class Bucket {
 
     /**
      * 
-     * @param {any} canvas
-     * @param {Engine} game
+     * @param {any} canvas Canvas Element
+     * @param {Engine} game Game Class
      */
     constructor(canvas, game) {
         this.game = game;
@@ -208,11 +218,11 @@ class Bucket {
 
     /**
      * 
-     * @param {any} bitmap
-     * @param {number} x
-     * @param {number} y
-     * @param {number} color
-     * @param {number} tolerance
+     * @param {number} x X location
+     * @param {number} y Y location
+     * @param {number[]} color Color array 
+     * @param {number} tolerance Tolerance
+     * @param {boolean} emit Emit to server
      */
     async floodFill(x, y, color, tolerance, emit) {
         if (!this.isRendering) {
@@ -380,7 +390,7 @@ class Whiteboard {
         this.mouseDown = false;
 
         this.tool = {
-            "color": "000",
+            "color": "777",
             "selected": "none"
         }
 
@@ -400,7 +410,7 @@ class Whiteboard {
             switch (self.tool.selected) {
                 case 'text':
                     let msg = document.getElementById('textbox-wb').value;
-                    self.ctx.font = "12px Arial";
+                    self.ctx.font = "bold 12px sans-serif";
                     self.ctx.fillText(msg, pos.x, pos.y);
                     break;
                 case 'fill':
@@ -456,9 +466,9 @@ class Whiteboard {
     }
 
     /**
-     * 
-     * @param {String} hex
-     * @param {Number} alpha
+     * @param {String} hex HEX Color value
+     * @param {Number} alpha Opacity value
+     * @returns {number[]} RBGA value
      */
     hexToRGBA(hex, alpha) {
         let r, g, b;
@@ -552,10 +562,10 @@ class Whiteboard {
 class GameMap {
     /**
      * 
-     * @param {Engine} game
-     * @param {Player} player
-     * @param {String} name
-     * @param {JSON} points
+     * @param {Engine} game Game class
+     * @param {Player} player Player class
+     * @param {String} name Name of the map
+     * @param {JSON} points Map detection points
      */
     constructor(game, player, name, points) {
         this.map = name;
@@ -569,12 +579,10 @@ class GameMap {
         this.ctx = document.getElementById('map').getContext('2d');
         this.points = points;
 
-        this.draggable = new Draggable('map', 10, 10, this.game, true);
-
         // load tools
         this.tool = {
-            color: "000",
-            selected: "info"
+            color: "777",
+            selected: "none"
         }
         this.bucket = new Bucket(this.canvas, this.game);
         this.mouseDown = false;
@@ -590,9 +598,6 @@ class GameMap {
     init() {
         let self = this;
 
-        //if (this.host && player.isHost === true) {
-        //    this.host.loadTools();
-        //} else {
         this.canvas.addEventListener('click', function (e) {
             e.preventDefault();
 
@@ -608,12 +613,14 @@ class GameMap {
                 case 'text':
                     let rect = self.canvas.getBoundingClientRect();
                     let msg = document.getElementById('textbox-map').value;
-                    self.ctx.font = "12px Arial";
+                    self.ctx.font = "bold 12px sans-serif";
                     self.ctx.fillText(msg, pos.x, pos.y);
+                    self.game.socket.emit('text', { 'msg': msg, 'x': pos.x, 'y': pos.y });
                     break;
                 case 'fill':
                     let tolerance = Number.parseInt(document.getElementById('tolerance-map').value);
-                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, 255), tolerance, true);
+                    let opacity = Number.parseInt(document.getElementById('opacity-map').value);
+                    self.bucket.floodFill(pos.x, pos.y, self.hexToRGBA(self.tool.color, Math.abs((opacity / 100) * 255)), tolerance, true);
                     break;
             }
         });
@@ -621,7 +628,8 @@ class GameMap {
             switch (self.tool.selected) {
                 case 'pen':
                     let { x, y } = self.getPos(e, self.canvas);
-                    self.savedPos = { x: x, y: y };
+                    self.savedPos = { x: x, y: y }
+                    self.drawDot(x, y, x, y, self.hexToRGBA(self.tool.color, 255), true);
                     self.mouseDown = true;
                     break;
             }
@@ -658,16 +666,15 @@ class GameMap {
                     break;
             }
         });
-        //}
     }
 
     /**
-     *
      * @param {number} x0 Previous mouse X position
      * @param {number} y0 Previous mouse Y position
      * @param {number} x1 Mouse X position
      * @param {number} y1 Mouse Y position
      * @param {string} color Draw hex color
+     * @param {boolean} emit Emit to server?
      */
     drawDot(x0, y0, x1, y1, color, emit) {
         this.ctx.strokeStyle = "rgba(" + color[0] + "," + color[1] + "," + color[2] + "," + color[3] / 255 + ")";
@@ -690,7 +697,7 @@ class GameMap {
             x1: x1,
             y1: y1,
             color: color
-        })
+        });
     }
 
     /**
@@ -699,6 +706,7 @@ class GameMap {
      * @param {Number} testy Y testing value
      * @param {String} name Name of territory
      * @param {Boolean} set Auto set the territor info
+     * @returns {JSON} JSON of element found
      */
     detectPoly(verts, testx, testy, name, set) {
         let vertx = [];
@@ -710,7 +718,7 @@ class GameMap {
         }
         let i, j, c = false;
         for (i = 0, j = verts.length - 1; i < verts.length; j = i++) {
-            if ((verty[i] > testy != verty[j] > testy) && (testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i])) {
+            if ((verty[i] > testy !== verty[j] > testy) && (testx < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i])) {
                 c = !c;
             }
         }
@@ -733,9 +741,9 @@ class GameMap {
     }
 
     /**
-     * 
-     * @param {String} hex
-     * @param {Number} alpha
+     * @param {String} hex HEX Color value
+     * @param {Number} alpha Opacity value
+     * @returns {number[]} RBGA value
      */
     hexToRGBA(hex, alpha) {
         let r, g, b;
@@ -761,12 +769,17 @@ class GameMap {
         let colors = document.getElementById('colors-map-container');
         let text = document.getElementById('textbox-map-container');
 
-        if (this.tool.selected !== "none") {
+        if (this.tool.selected !== "none" && this.tool.selected !== "info") {
             let prevBtn = document.getElementById(this.tool.selected + '-map');
             prevBtn.style.boxShadow = "none";
         }
 
-        if (this.tool.selected === tool) {
+        if (tool === "info") {
+            this.tool.selected = tool;
+
+            colors.setAttribute("class", "hidden");
+            text.setAttribute("class", "hidden");
+        } else if (this.tool.selected === tool) {
             let prevBtn = document.getElementById(this.tool.selected + '-map');
             prevBtn.style.boxShadow = "none";
 
@@ -775,20 +788,44 @@ class GameMap {
 
             this.tool.selected = "none";
         } else {
-            if (tool === "pen" || tool === "fill") {
-                colors.setAttribute("class", "");
-                text.setAttribute("class", "hidden");
-            } else if (tool === "text") {
-                colors.setAttribute("class", "hidden");
-                text.setAttribute("class", "");
-            } else {
-                colors.setAttribute("class", "hidden");
-                text.setAttribute("class", "hidden");
+            switch (tool) {
+                case "pen":
+                case "fill":
+                    colors.setAttribute("class", "");
+                    text.setAttribute("class", "hidden");
+                    break;
+                case "text":
+                    colors.setAttribute("class", "hidden");
+                    text.setAttribute("class", "");
+                    break;
+                case "save":
+                    this.game.socket.emit('save-map');
+                    colors.setAttribute("class", "hidden");
+                    text.setAttribute("class", "hidden");
+                    break;
+                case "refresh":
+                    this.game.socket.emit('refresh-map');
+                    colors.setAttribute("class", "hidden");
+                    text.setAttribute("class", "hidden");
+                    break;
+                case "clear":
+                    this.game.socket.emit('clear-map');
+                    colors.setAttribute("class", "hidden");
+                    text.setAttribute("class", "hidden");
+                    break;
+                default:
+                    colors.setAttribute("class", "hidden");
+                    text.setAttribute("class", "hidden");
             }
-            let nextBtn = document.getElementById(tool + '-map');
-            nextBtn.style.boxShadow = "inset 0px 0px 2px 2px rgba(0,0,0,.075)";
 
-            this.tool.selected = tool;
+            if (tool !== "save" && tool !== "clear" && tool !== "refresh" && tool !== "info") {
+                let nextBtn = document.getElementById(tool + '-map');
+                nextBtn.style.boxShadow = "inset 0px 0px 2px 2px rgba(0,0,0,.075)";
+
+                this.tool.selected = tool;
+            } else {
+                this.tool.selected = "none";
+            }
         }
     }
 
