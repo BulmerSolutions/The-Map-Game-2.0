@@ -1,4 +1,6 @@
-﻿'use strict';
+#!/usr/bin/env node﻿
+
+'use strict';
 var debug = require('debug');
 var express = require('express');
 var path = require('path');
