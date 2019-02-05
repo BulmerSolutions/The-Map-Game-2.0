@@ -6,8 +6,8 @@ class Engine {
      */
     constructor(opts) {
         this.version = '0.1.0';
-        
-        this.socket = io('/');
+
+        this.socket = io('/' + window.location.pathname.split('/')[window.location.pathname.split('/').length - 1]);
 
         this.player = new Player(opts.player);
         this.whiteboard = new Whiteboard(this, this.player);
