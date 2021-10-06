@@ -10,7 +10,7 @@
     "name": "Dylan Bulmer"
   },
   "dependencies": {
-    "bcrypt": "^3.0.0",
+    "bcrypt": "^5.0.1",
     "body-parser": "^1.15.0",
     "cookie-parser": "^1.4.0",
     "debug": "^2.2.0",
@@ -19,6 +19,6 @@
     "mysql": "^2.16.0",
     "pug": "^2.0.0-beta6",
     "serve-favicon": "^2.3.0",
-    "socket.io": "^2.1.1"
+    "socket.io": "^2.4.1"
   }
 }
